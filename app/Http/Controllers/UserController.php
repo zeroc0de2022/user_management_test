@@ -3,6 +3,8 @@ declare(strict_types = 1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreUserRequest;
+use App\Http\Requests\UpdateUserRequest;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -35,25 +37,20 @@ class UserController extends Controller
 
     /**
      * Store a newly created resource in storage.
-     * @param Request $request
+     * @param StoreUserRequest $request
      * @return JsonResponse
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreUserRequest $request): JsonResponse
     {
-        $request->validate(['name'     => 'required|string|max:255',
-                            'email'    => 'required|email|unique:users,email',
-                            'password' => 'required|string|min:6',
-                            'ip'       => 'nullable|string|max:15',
-                            'comment'  => 'nullable|string',]);
-
-        $user = User::create(['name'     => $request->name,
-                              'email'    => $request->email,
-                              'password' => bcrypt($request->password),
-                              'ip'       => $request->ip,
-                              'comment'  => $request->comment,]);
-
+        $validated = $request->validated();
+        $user = User::create(['name'     => $validated['name'],
+                              'email'    => $validated['email'],
+                              'password' => bcrypt($validated['password']),
+                              'ip'       => $validated['ip'] ?? null,
+                              'comment'  => $validated['comment'] ?? null,]);
         return response()->json($user, 201);
     }
+
 
     /**
      * Display the specified resource.
@@ -82,28 +79,24 @@ class UserController extends Controller
 
     /**
      * Update the specified resource in storage.
-     * @param Request $request
+     * @param UpdateUserRequest $request
      * @param int $id
      * @return JsonResponse
      */
-    public function update(Request $request, $id): JsonResponse
+    public function update(UpdateUserRequest $request, $id): JsonResponse
     {
         $user = User::find($id);
         if(!$user) {
             return response()->json(['message' => 'Пользователь не найден'], 404);
         }
-        $request->validate(['name'     => 'sometimes|string|max:255',
-                            'email'    => 'sometimes|email|unique:users,email,' . $id,
-                            'password' => 'sometimes|string|min:6',
-                            'ip'       => 'nullable|string|max:15',
-                            'comment'  => 'nullable|string',]);
-        $user->update(['name'     => $request->name ?? $user->name,
-                       'email'    => $request->email ?? $user->email,
-                       'password' => $request->password
-                           ? bcrypt($request->password)
+        $validated = $request->validated();
+        $user->update(['name'     => $validated['name'] ?? $user->name,
+                       'email'    => $validated['email'] ?? $user->email,
+                       'password' => isset($validated['password'])
+                           ? bcrypt($validated['password'])
                            : $user->password,
-                       'ip'       => $request->ip ?? $user->ip,
-                       'comment'  => $request->comment ?? $user->comment,]);
+                       'ip'       => $validated['ip'] ?? $user->ip,
+                       'comment'  => $validated['comment'] ?? $user->comment,]);
         return response()->json($user);
     }
 
@@ -112,7 +105,7 @@ class UserController extends Controller
      * @param int $id
      * @return JsonResponse
      */
-    public function destroy($id)
+    public function destroy($id): JsonResponse
     {
         $user = User::find($id);
         if(!$user) {
