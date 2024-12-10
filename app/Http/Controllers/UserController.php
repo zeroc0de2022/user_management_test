@@ -17,11 +17,25 @@ class UserController extends Controller
 {
     /**
      * Display a listing of the resource.
+     * @param Request $request
      * @return JsonResponse
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $users = User::paginate(10); // Пагинация по 10 пользователей на странице
+        $query = User::query();
+        // Поиск по имени
+        if($request->has('name')) {
+            $query->where('name', 'like', '%' . $request->name . '%');
+        }
+        // Сортировка по имени
+        if($request->has('sort')) {
+            $direction = $request->has('order') && $request->order === 'desc'
+                ? 'desc'
+                : 'asc';
+            $query->orderBy($request->sort, $direction);
+        }
+        // Пагинация
+        $users = $query->paginate(10);
         return response()->json($users);
     }
 
